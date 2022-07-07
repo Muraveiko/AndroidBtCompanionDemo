@@ -1,39 +1,50 @@
 package ru.a402d.btcompaniondemo;
 
-import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.companion.AssociationRequest;
 import android.companion.BluetoothDeviceFilter;
 import android.companion.CompanionDeviceManager;
 import android.content.Context;
-import android.content.Intent;
 import android.content.IntentSender;
 import android.os.Bundle;
-import android.os.ParcelUuid;
-import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
 
-import java.util.UUID;
-import java.util.regex.Pattern;
+import java.util.Objects;
+
 
 public class MainActivity extends AppCompatActivity {
-    final int SELECT_DEVICE_REQUEST_CODE = 555;
 
     // empty filter = all devices
-    BluetoothDeviceFilter deviceFilter = new BluetoothDeviceFilter.Builder().build();
+    final BluetoothDeviceFilter deviceFilter = new BluetoothDeviceFilter.Builder().build();
 
-    AssociationRequest pairingRequest = new AssociationRequest.Builder()
-            // Find only devices that match this request filter.
+    final AssociationRequest pairingRequest = new AssociationRequest.Builder()
             .addDeviceFilter(deviceFilter)
-            // Stop scanning as soon as one device matching the filter is found.
-            .setSingleDevice(true)
             .build();
 
     CompanionDeviceManager deviceManager;
+
+    private final ActivityResultLauncher<IntentSenderRequest> btCompanionLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartIntentSenderForResult(),
+                    result -> {
+                        try {
+                            BluetoothDevice device = Objects.requireNonNull(
+                                            result.getData()).
+                                    getParcelableExtra(
+                                            CompanionDeviceManager.EXTRA_DEVICE);
+                            if (device != null) {
+                                // действия по запоминанию выбора
+                                ((TextView) findViewById(R.id.txtMac)).setText(device.getAddress());
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    });
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,19 +56,13 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.button).setOnClickListener(v -> callCompanion());
     }
 
-    private void callCompanion(){
+    private void callCompanion() {
         deviceManager.associate(pairingRequest, new CompanionDeviceManager.Callback() {
             // Called when a device is found. Launch the IntentSender so the user can
             // select the device they want to pair with.
             @Override
             public void onDeviceFound(IntentSender chooserLauncher) {
-                try {
-                    startIntentSenderForResult(
-                            chooserLauncher, SELECT_DEVICE_REQUEST_CODE, null, 0, 0, 0
-                    );
-                } catch (IntentSender.SendIntentException e) {
-                    Log.e("MainActivity", "Failed to send intent");
-                }
+                btCompanionLauncher.launch(new IntentSenderRequest.Builder(chooserLauncher).build());
             }
 
             @Override
@@ -67,21 +72,4 @@ public class MainActivity extends AppCompatActivity {
         }, null);
     }
 
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (resultCode != Activity.RESULT_OK) {
-            return;
-        }
-        if (requestCode == SELECT_DEVICE_REQUEST_CODE && data != null) {
-            BluetoothDevice deviceToPair =
-                    data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
-            if (deviceToPair != null) {
-                // Continue to interact with the paired device.
-                ((TextView)findViewById(R.id.txtMac)).setText(deviceToPair.getAddress());
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
-    }
 }
