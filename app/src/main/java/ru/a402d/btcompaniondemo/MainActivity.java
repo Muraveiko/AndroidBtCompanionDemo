@@ -23,12 +23,8 @@ import java.util.regex.Pattern;
 public class MainActivity extends AppCompatActivity {
     final int SELECT_DEVICE_REQUEST_CODE = 555;
 
-    BluetoothDeviceFilter deviceFilter = new BluetoothDeviceFilter.Builder()
-            // Match only Bluetooth devices whose name matches the pattern.
-            .setNamePattern(Pattern.compile("My device"))
-            // Match only Bluetooth devices whose service UUID matches this pattern.
-            .addServiceUuid(new ParcelUuid(new UUID(0x123abcL, -1L)), null)
-            .build();
+    // empty filter = all devices
+    BluetoothDeviceFilter deviceFilter = new BluetoothDeviceFilter.Builder().build();
 
     AssociationRequest pairingRequest = new AssociationRequest.Builder()
             // Find only devices that match this request filter.
